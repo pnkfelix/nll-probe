@@ -13,15 +13,15 @@ the two runs differed.
 
 Legend for character code print out:
 
-Code Meaning
----- --------------
-`I`  Ignored
-`J`  NoChange
-`X`  NoOutput
-`U`  NoExpected (?)
-`M`  Modified
-`S`  ExpectedSuccess
-`F`  ExpectedFailure
+Code|Meaning
+----|--------------
+`I` |Ignored
+`J` |NoChange
+`X` |NoOutput
+`U` |NoExpected (?)
+`M` |Modified
+`S` |ExpectedSuccess
+`F` |ExpectedFailure
 
 The vast majority of the output will probably be lines starting with
 `J` (since most tests should either have no error or error in the same
