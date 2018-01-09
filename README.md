@@ -15,14 +15,25 @@ Legend for character code print out:
 
 Code|Meaning
 ----|--------------
-`I` |Ignored
-`J` |NoChange
-`X` |NoOutput
-`U` |NoExpected (?)
-`M` |Modified
-`S` |ExpectedSuccess
-`F` |ExpectedFailure
+`J` |NoChange: no difference in borrowck output.
+`I` |Ignored: an ignored test; these are tracked in `data/IGNORE`
+`X` |NoOutput: the MIR result had no output at all; i.e. no output file was even found.
+`U` |NoExpected: an NLL injected change that was neither a known-good nor known-bad case.
+`S` |ExpectedSuccess: a "blessed" MIR result; these are tracked in `data/known-good/`
+`F` |ExpectedFailure: a "cursed" MIR result; these are tracked in `data/known-bad/`
+`M` |Modified: test was blessed or cursed beforehand, but actual output differed from expectation
 
 The vast majority of the output will probably be lines starting with
 `J` (since most tests should either have no error or error in the same
 way in both cases).
+
+NOTE: pnkfelix has not yet managed to infer what the intended
+distinction is between the "blessed"/"cursed" tags as given above.
+
+* The only example of *either* pnkfelix currently observes is
+  `compile-fail/issue-5500-1.rs`, which currently (and as expected)
+  generates an error in AST-borrowck but does not in MIR-borrowck
+  (because the erroneous borrow is in unreachable code). This one case
+  is classified as "cursed" (i.e. its listed in `data/known-bad`),
+  where the file in question is empty because the MIR compilation is
+  successful.
