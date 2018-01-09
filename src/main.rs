@@ -15,6 +15,11 @@ use std::io::{self, Read};
 use std::process::Command;
 use std::path::{PathBuf};
 
+// Note: right now the code tends to assume that the paths referenced
+// here exist, and does not always give very good error messages when
+// they are missing.  We put in a check for the path for args[0],
+// since the error message you get when that's missing is particularly
+// bad. But it might be good to not have that check be so magical.
 pub const COMPILETEST_COMMAND: &[&str] = &[
     "{BUILDROOT}/{HOST}/stage0-tools/x86_64-unknown-linux-gnu/release/compiletest",
     "--compile-lib-path",
@@ -79,6 +84,14 @@ mod errors {
             Toml(::toml::de::Error);
             StripPrefix(::std::path::StripPrefixError);
             WalkDir(::walkdir::Error);
+        }
+
+        errors {
+            /// Variant on io::Error::FileNotFound that *carries* a
+            /// description of the path one tried to look up.
+            FileNotFound(t: String) {
+                display("file not found: '{}'", t)
+            }
         }
     }
 }
@@ -146,11 +159,19 @@ pub fn run_tester(cfg: &Configuration,
         }).collect()
     }).collect::<Result<Vec<String>>>()?;
 
-    let status = Command::new(&args[0]).args(&args[1..]).env_remove("RUST_LOG").status()?;
+    let arg0 = &args[0];
+    let argsR = &args[1..];
+    let status = status(arg0, argsR)?;
     info!("running tests in configuration {:?} {:?} - status={:?}",
           suite, kind, status);
     Ok(())
 
+}
+
+fn status(arg0: &String, argsR: &[String]) -> Result<::std::process::ExitStatus> {
+    /// Dummy attempt to open args[0] so that we signal our own FileNotFound error if its missing.
+    fs_open(PathBuf::from(arg0))?;
+    Command::new(arg0).args(argsR).env_remove("RUST_LOG").status().map_err(|e| e.into())
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -179,8 +200,22 @@ impl TestResult {
     }
 }
 
+/// Wrapper around `File::open` that converts a `ErrorKind::NotFound`
+/// into our own more informative `FileNotFound` error.
+fn fs_open(path: PathBuf) -> Result<fs::File> {
+    info!("fs_open attempt to open file '{}'", path.display());
+    match fs::File::open(path.clone()) {
+        Ok(mut f) => Ok(f),
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+            Err(ErrorKind::FileNotFound(format!("{}", path.display())).into())
+        }
+        Err(e) => Err(From::from(e))
+    }
+}
+
 fn read_file(path: PathBuf) -> Result<Option<String>> {
     let mut buf = String::new();
+    info!("read_file attempt to open file '{}'", path.display());
     match fs::File::open(path) {
         Ok(mut f) => {
             f.read_to_string(&mut buf)?;
@@ -214,7 +249,7 @@ fn check_test(cfg: &Configuration,
 
     let ast_path = cfg.target_dir(suite, "ast").join(&filename);
     let mut ast_result = String::new();
-    fs::File::open(ast_path)?.read_to_string(&mut ast_result)?;
+    fs_open(ast_path)?.read_to_string(&mut ast_result)?;
 
     let mir_result = cfg.target_dir(suite, "mir").join(&filename);
     let mir_result = match read_file(mir_result)? {
@@ -248,12 +283,16 @@ fn check_test(cfg: &Configuration,
 }
 
 fn on_suite(cfg: &Configuration, suite: &str) -> Result<()> {
+    info!("running run_tester ast");
     run_tester(cfg, suite, "ast", "")?;
+    info!("ran run_tester ast");
+    info!("running run_tester mir");
     run_tester(cfg, suite, "mir", "-Z borrowck=mir")?;
+    info!("ran run_tester mir");
 
     let mut ignore = String::new();
     let ignore_path = cfg.datadir.join("IGNORE");
-    fs::File::open(ignore_path)?.read_to_string(&mut ignore)?;
+    fs_open(ignore_path)?.read_to_string(&mut ignore)?;
     let ignore: Vec<_> = ignore.split('\n').collect();
 
     let mut walkdir = walkdir::WalkDir::new(cfg.target_dir(suite, "ast")).into_iter();
@@ -280,9 +319,14 @@ fn on_suite(cfg: &Configuration, suite: &str) -> Result<()> {
 fn run() -> Result<i32> {
     env_logger::init().expect("logger initialization successful");
     let mut cfg = String::new();
-    fs::File::open("nll-probe.toml")?.read_to_string(&mut cfg)?;
+    info!("current directory: {:?}", ::std::env::current_dir());
+    fs_open(PathBuf::from("nll-probe.toml"))?.read_to_string(&mut cfg)?;
+    info!("opened nll-probe.toml");
     let cfg: Configuration = toml::from_str(&cfg)?;
+    info!("read Toml from nll-probe.toml");
     on_suite(&cfg, "run-pass")?;
+    info!("ran run-pass suite");
     on_suite(&cfg, "compile-fail")?;
+    info!("ran compile-fail suite");
     Ok((0))
 }
