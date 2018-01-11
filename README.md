@@ -1,17 +1,32 @@
 Tracker for the status of MIR borrowck integration.
 
+## Instructions
+
 1. Adjust the configuration in `nll-probe.toml` to suit your own local Rust installation.
-2. Invoke `cargo run`.
+2. Invoke `cargo run >& killme`.
+    - The program will run, via `compiletest`, the key compiler test suites
+      (namely the `run-pass/` and `compile-fail/` suites) twice (once for
+      AST-borrowck and once for MIR-borrowck), and then print out the
+      results when comparing the two runs.
+    - For each test, the program prints a one character code to indicate how
+      the two runs differed.
 
-The program will run, via `compiletest`, the key compiler test suites
-(namely the `run-pass/` and `compile-fail/` suites) twice (once for
-AST-borrowck and once for MIR-borrowck), and then print out the
-results when comparing the two runs.
+3. You can now run `grep '^[UM]' killme` to get a list of tests whose output differs
+   between the AST-based checker and the MIR-based checker and where that difference is
+   not yet marked as "good" or "bad".
+    - Those marked with `U` never had any reference output.
+    - Those marked with `M` had output marked as good or bad, but that output changed.
+4. Run `. bless-curse` to load various bash functions into your shell.
+5. You can now do:
+    - `bless T` to mark the output of a given test `T` as good
+        - Do this if the MIR-based output is better or "good enough"
+    - `curse T` to mark the output of a given test `T` as known to be bad
+        - In this case, there should be an open issue; you may wany to open it
+        - Label it with `WG-compiler-nll` in that case
+    - `uncurse T` to remove cursed output
+    - `check T` to see the output in question
 
-For each test, the program prints a one character code to indicate how
-the two runs differed.
-
-Legend for character code print out:
+## Legend for character code print out
 
 Code|Meaning
 ----|--------------
@@ -27,13 +42,3 @@ The vast majority of the output will probably be lines starting with
 `J` (since most tests should either have no error or error in the same
 way in both cases).
 
-NOTE: pnkfelix has not yet managed to infer what the intended
-distinction is between the "blessed"/"cursed" tags as given above.
-
-* The only example of *either* pnkfelix currently observes is
-  `compile-fail/issue-5500-1.rs`, which currently (and as expected)
-  generates an error in AST-borrowck but does not in MIR-borrowck
-  (because the erroneous borrow is in unreachable code). This one case
-  is classified as "cursed" (i.e. its listed in `data/known-bad`),
-  where the file in question is empty because the MIR compilation is
-  successful.
