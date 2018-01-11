@@ -28,6 +28,7 @@ Tracker for the status of MIR borrowck integration.
         - Label it with `WG-compiler-nll` in that case
     - `uncurse T` to remove cursed output
     - `check T` to see the output in question
+        - FIXME currently this requires editing bless-curse to deal with hard-coded paths
 
 [spreadsheet]: https://docs.google.com/spreadsheets/d/1iya_U_t69tDviWj1bFc2dLzuNTVY0XTN1nBrN2MS62g/edit#gid=80171211
 
