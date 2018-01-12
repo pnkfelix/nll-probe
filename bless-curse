@@ -8,5 +8,10 @@ function curse {
 }
 function uncurse { git rm -f ./data/known-bad/$1.err; }
 function check { 
-    ~/Rust/rust-master/build-debug-assertions/build/x86_64-unknown-linux-gnu/stage1/bin/rustc ~/Rust/rust-master/src/test/compile-fail/$1.rs -Z borrowck=compare
+    ~/versioned/nll-probe-rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc ~/versioned/nll-probe-rust/src/test/compile-fail/$1.rs -Z borrowck=compare
+}
+function check-diff {
+    ~/versioned/nll-probe-rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc ~/versioned/nll-probe-rust/src/test/compile-fail/$1.rs -Z borrowck=ast >& /tmp/killme.ast
+    ~/versioned/nll-probe-rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc ~/versioned/nll-probe-rust/src/test/compile-fail/$1.rs -Z borrowck=mir >& /tmp/killme.mir
+    diff -u /tmp/killme.{ast,mir}
 }
