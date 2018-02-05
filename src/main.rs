@@ -160,18 +160,18 @@ pub fn run_tester(cfg: &Configuration,
     }).collect::<Result<Vec<String>>>()?;
 
     let arg0 = &args[0];
-    let argsR = &args[1..];
-    let status = status(arg0, argsR)?;
+    let args_r = &args[1..];
+    let status = status(arg0, args_r)?;
     info!("running tests in configuration {:?} {:?} - status={:?}",
           suite, kind, status);
     Ok(())
 
 }
 
-fn status(arg0: &String, argsR: &[String]) -> Result<::std::process::ExitStatus> {
-    /// Dummy attempt to open args[0] so that we signal our own FileNotFound error if its missing.
+fn status(arg0: &String, args_r: &[String]) -> Result<::std::process::ExitStatus> {
+    // Dummy attempt to open args[0] so that we signal our own FileNotFound error if its missing.
     fs_open(PathBuf::from(arg0))?;
-    Command::new(arg0).args(argsR).env_remove("RUST_LOG").status().map_err(|e| e.into())
+    Command::new(arg0).args(args_r).env_remove("RUST_LOG").status().map_err(|e| e.into())
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -205,7 +205,7 @@ impl TestResult {
 fn fs_open(path: PathBuf) -> Result<fs::File> {
     info!("fs_open attempt to open file '{}'", path.display());
     match fs::File::open(path.clone()) {
-        Ok(mut f) => Ok(f),
+        Ok(f) => Ok(f),
         Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
             Err(ErrorKind::FileNotFound(format!("{}", path.display())).into())
         }
@@ -328,5 +328,5 @@ fn run() -> Result<i32> {
     info!("ran run-pass suite");
     on_suite(&cfg, "compile-fail")?;
     info!("ran compile-fail suite");
-    Ok((0))
+    Ok(0)
 }
